@@ -64,7 +64,7 @@
         body {
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: "Kaiti TC", "BiauKai", "DFKai-SB", "楷體", "KaiTi", serif;
+            font-family: "Kaiti TC", "STKaiti", "DFKai-SB", "BiauKai", "KaiTi", "楷體", serif;
             margin: 0;
             padding: 10px 20px 45px 20px;
             transition: background-color 0.2s, color 0.2s;
@@ -199,11 +199,23 @@
         .settings-item { margin-bottom: 30px; }
         .settings-item label { display: block; margin-bottom: 12px; font-weight: bold; font-size: 24px; }
         
-        .settings-item button {
-            padding: 12px;
-            margin: 5px; font-size: 20px; background-color: var(--bg-color);
-            color: var(--text-color); border: 2px solid var(--text-color); border-radius: 6px; cursor: pointer;
-            font-family: inherit; transition: all 0.15s ease;
+        .settings-item button,
+        .panel-header button.btn-large {
+            padding: 12px 18px;
+            margin: 5px; font-size: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .panel-header button.btn-large {
+            font-size: 22px;
+            font-weight: bold;
+            min-width: 120px;
         }
 
         /* 語音面板專用選中狀態樣式 (高對比反色顯著提示) */
@@ -394,7 +406,7 @@
             <label>🔊 功課完成讚賞音效</label>
             <button data-val="cantonese" onclick="setReward('cantonese')">粵語讚賞</button>
             <button data-val="english" onclick="setReward('english')">英文讚賞</button>
-            <button data-val="clap" onclick="setReward('coin')">金幣聲🪙</button>
+            <button data-val="coin" onclick="setReward('coin')">金幣聲🪙</button>
             <button data-val="mtr" onclick="setReward('mtr')">地鐵嘟嘟嘟聲</button>
         </div>
     </div>
