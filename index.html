@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>視障語文自主學習系統 - 提升識字量遊戲</title>
+    <style>
+        /* 核心高對比度變數設定 */
+        :root {
+            /* 預設：米白底黑字 */
+            --bg-color: #FDF5E6;
+            --text-color: #000000;
+            --box-border: #000000; 
+            --panel-bg: #EAE0C8;
+            --panel-text: #000000;
+            
+            /* 預設米底黑字時，指讀字詞變色為「黑底米字」 */
+            --active-bg: #000000;
+            --active-border: #000000;
+            --active-text: #FDF5E6; 
+
+            /* 基準字體大小設定：40pt 對應 53px */
+            --font-size: 53px;
+            --box-size: 1.4em;
+        }
+
+        /* 主題 1：白底黑字 */
+        body.theme-white-black {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --box-border: #000000;
+            --panel-bg: #e0e0e0;
+            --panel-text: #000000;
+            --active-bg: #000000;
+            --active-border: #ff0000;
+            --active-text: #ffffff;
+        }
+
+        /* 主題 2：黑底白字 */
+        body.theme-black-white { 
+            --bg-color: #000000;
+            --text-color: #ffffff; 
+            --box-border: #ffffff; 
+            --panel-bg: #222222;
+            --panel-text: #ffffff;
+            --active-bg: #ffffff;     
+            --active-border: #ff0000;
+            --active-text: #000000;
+        }
+
+        /* 主題 3：黑底黃字 */
+        body.theme-black-yellow { 
+            --bg-color: #000000;
+            --text-color: #ffff00; 
+            --box-border: #ffff00; 
+            --panel-bg: #222222;
+            --panel-text: #ffff00;
+            --active-bg: #ffff00;     
+            --active-border: #ff0000;
+            --active-text: #000000;
+        }
+
+        /* 防禦性版面設計：無捲動、自適應視窗 */
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: "Kaiti TC", "STKaiti", "DFKai-SB", "BiauKai", "KaiTi", "楷體", serif;
+            margin: 0;
+            padding: 10px 20px 45px 20px;
+            transition: background-color 0.2s, color 0.2s;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Splash 載入畫面樣式 */
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #ffffff; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease-out;
+            opacity: 1;
+            cursor: default;
+        }
+        #splash-screen.ready {
+            cursor: pointer;
+        }
+        #splash-screen img {
+            max-width: 75%;
+            max-height: 65%;
+            object-fit: contain;
+        }
+        .splash-text {
+            color: #64834a;
+            font-size: 38px;
+            font-weight: bold;
+            margin-top: 25px;
+            letter-spacing: 3px;
+            text-align: center;
+        }
+        .splash-hint {
+            display: none;
+            margin-top: 20px;
+            font-size: 72px;
+            line-height: 1;
+            color: #2f4f2f;
+            text-align: center;
+            animation: splashPulse 1s infinite alternate;
+        }
+        #splash-screen.ready .splash-hint {
+            display: block;
+        }
+        @keyframes splashPulse {
+            from { transform: scale(1); opacity: 0.9; }
+            to { transform: scale(1.05); opacity: 1; }
+        }
+
+        /* 頂部極簡圖示控制區 */
+        .top-bar {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-wrap: wrap; 
+            justify-content: flex-start;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--text-color);
+        }
+
+        .sch-logo {
+            height: 50px;
+            background: transparent;
+            border: none;
+            margin-right: auto; 
+        }
+
+        .icon-btn {
+            font-size: 28px;
+            width: 60px;
+            height: 60px;
+            background-color: var(--panel-bg);
+            color: var(--panel-text);
+            border: 3px solid var(--text-color);
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .icon-btn:hover, .icon-btn:focus {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            transform: scale(1.05);
+        }
+
+        .main-select {
+            font-size: 24px;
+            padding: 5px;
+            background-color: var(--panel-bg);
+            color: var(--panel-text);
+            border: 3px solid var(--text-color);
+            border-radius: 8px;
+            cursor: pointer;
+            max-width: 200px;
+            font-family: inherit;
+        }
+
+        /* 左下角固定 HUD 縮放提示區 */
+        .zoom-display-fixed {
+            position: fixed;
+            bottom: 5px;
+            left: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--text-color);
+            background-color: var(--panel-bg);
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 2px solid var(--box-border);
+            user-select: none;
+            z-index: 100;
+            font-family: inherit;
+        }
+
+        /* 控制面板彈窗 */
+        .modal-panel {
+            display: none;
+            position: fixed;
+            top: 5%;
+            left: 5%;
+            width: 90%;
+            max-width: 800px;
+            height: 90vh;
+            background-color: var(--panel-bg);
+            color: var(--panel-text);
+            border: 5px solid var(--text-color);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+            z-index: 2000;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between; align-items: center;
+            border-bottom: 4px solid var(--text-color); padding-bottom: 15px; margin-bottom: 20px;
+        }
+
+        .settings-item { margin-bottom: 30px; }
+        .settings-item label { display: block; margin-bottom: 12px; font-weight: bold; font-size: 24px; }
+        
+        .settings-item button,
+        .panel-header button.btn-large {
+            padding: 12px 18px;
+            margin: 5px; font-size: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s ease;
+        }
+
+        .panel-header button.btn-large {
+            font-size: 22px;
+            font-weight: bold;
+            min-width: 120px;
+        }
+
+        /* 語音面板專用選中狀態樣式 (高對比反色顯著提示) */
+        .settings-item button.active-setting {
+            background-color: var(--text-color) !important;
+            color: var(--bg-color) !important;
+            border: 3px solid var(--text-color) !important;
+            box-shadow: 0 0 12px var(--text-color);
+            font-weight: bold;
+        }
+
+        /* 首頁課次選擇大按鈕專區樣式 */
+        #home-container {
+            width: 100%;
+            max-width: 1200px;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .home-title {
+            font-size: calc(var(--font-size) * 0.55);
+            font-weight: bold;
+            margin-bottom: 25px;
+            color: var(--text-color);
+            text-align: center;
+        }
+        .lesson-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+        .lesson-btn {
+            background-color: var(--panel-bg);
+            color: var(--panel-text);
+            border: calc(var(--font-size) * 0.08) solid var(--box-border);
+            border-radius: 15px;
+            padding: calc(var(--font-size) * 0.3) calc(var(--font-size) * 0.2);
+            font-size: calc(var(--font-size) * 0.5);
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.1s ease-out;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            font-family: inherit;
+        }
+        .lesson-btn:hover, .lesson-btn:focus {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            border-color: var(--text-color);
+            transform: scale(1.03);
+            outline: none;
+        }
+        .lesson-btn .btn-subtext {
+            font-size: calc(var(--font-size) * 0.35);
+            opacity: 0.85;
+            font-weight: normal;
+            word-break: break-all;
+        }
+
+        /* 文章與字塊呈現 */
+        #article-container { 
+            width: 100%;
+            max-width: 1200px;
+            flex-grow: 1; 
+            overflow-y: auto; 
+            user-select: none; 
+            -webkit-user-select: none;
+            padding-right: 10px; 
+        }
+
+        .paragraph { 
+            display: flex;
+            flex-wrap: wrap; justify-content: flex-start;
+            padding: 10px; border: 2px dashed var(--box-border); border-radius: 10px;
+        }
+
+        .word {
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            width: var(--box-size); height: var(--box-size);
+            border: 3px solid var(--box-border); border-radius: 0.15em; 
+            margin: 6px; font-size: var(--font-size); color: var(--text-color);
+            cursor: pointer; text-align: center; box-sizing: border-box;
+            background-color: transparent; 
+            font-weight: normal; 
+            transition: transform 0.1s;
+        }
+
+        .word:hover, .word:focus, .word.active {
+            background-color: var(--active-bg);
+            border-color: var(--active-border); 
+            color: var(--active-text); outline: none; transform: scale(1.05);
+        }
+
+        /* 完成與獎勵區 */
+       /* 💡 將原本的 .action-zone 修改為以下數值（減少內邊距與外邊距） */
+.action-zone {
+    width: 100%;
+    max-width: 1200px;
+    display: flex; 
+    flex-direction: column; 
+    align-items: center;
+    margin-top: 2px;          /* 從 10px 縮減到 2px */
+    padding: 2px 10px;        /* 上下邊距從 15px 大幅縮減到 2px */
+    background-color: transparent; 
+    border: none;                  
+    box-sizing: border-box; 
+    flex-shrink: 0;
+}
+
+/* 💡 將原本的 .praise-animate 修改為以下數值（降低高度與文字） */
+.praise-animate { 
+    font-size: 28px;          /* 讚賞文字稍縮小，原為 35px */
+    font-weight: bold; 
+    color: #ff3399; 
+    margin-top: 4px;          /* 間距從 10px 縮減到 4px */
+    text-align: center; 
+    min-height: 35px;         /* 佔用高度從 45px 縮減到 35px */
+}
+
+        /* 教師後台表格 */
+        .teacher-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 18px; }
+        .teacher-table th, .teacher-table td { border: 2px solid var(--text-color); padding: 10px; text-align: left; }
+        .textarea-article { width: 100%; height: 120px; font-size: 18px; margin-bottom: 10px; box-sizing: border-box; font-family: inherit; }
+
+        /* 右下角頁尾版權宣告 */
+        .footer {
+            position: fixed;
+            bottom: 5px;
+            right: 15px;
+            font-size: 14px;
+            color: var(--text-color);
+            opacity: 0.85;
+            font-weight: bold;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="theme-default">
+
+    <div id="splash-screen">
+        <img src="images/Eslogopage.png" alt="Ebenezer School Logo">
+        <div class="splash-text">心光學校 低視組</div>
+        <div id="splash-hint" class="splash-hint">👆</div>
+    </div>
+
+    <div class="top-bar">
+        <img src="images/sch_logo_only.png" alt="School Logo" class="sch-logo">
+        <select id="article-picker" class="main-select" onchange="loadSelectedArticle()" aria-label="選擇課文"></select>
+        <button class="icon-btn" onclick="goHome()" aria-label="首頁" title="首頁">🏠</button>
+        <button class="icon-btn" onclick="cycleTheme()" aria-label="切換主題色彩" title="切換主題色彩">🌓</button>
+        <button class="icon-btn" onclick="adjustFontSize(-5)" aria-label="縮小字體" title="縮小字體">A-</button>
+        <button class="icon-btn" onclick="adjustFontSize(5)" aria-label="放大字體" title="放大字體">A+</button>
+        <button class="icon-btn" onclick="openPanel('student-panel')" aria-label="語音設定" title="語音設定">⚙️</button>
+        <button class="icon-btn" onclick="openPanel('teacher-panel')" aria-label="教師後台" title="教師後台">👨‍🏫</button>
+    </div>
+
+    <div id="student-panel" class="modal-panel">
+        <div class="panel-header">
+            <h2>⚙️ 語音與回饋設定</h2>
+            <button class="btn-large" onclick="closePanel('student-panel')">關閉</button>
+        </div>
+        
+        <div class="settings-item" id="setting-group-lang">
+            <label>🗣️ 朗讀語言</label>
+            <button data-val="zh-HK" onclick="setLanguage('zh-HK')">粵語 (預設)</button>
+            <button data-val="zh-CN" onclick="setLanguage('zh-CN')">普通話</button>
+        </div>
+        
+        <div class="settings-item" id="setting-group-speed">
+            <label>🗣️ 朗讀語速</label>
+            <button data-val="0.5" onclick="setSpeed(0.5)">極慢 (0.5x)</button>
+            <button data-val="0.75" onclick="setSpeed(0.75)">較慢 (0.75x)</button>
+            <button data-val="1.0" onclick="setSpeed(1.0)">正常 (1.0x)</button>
+            <button data-val="1.3" onclick="setSpeed(1.3)">稍快 (1.3x)</button>
+        </div>
+        
+        <div class="settings-item" id="setting-group-reward">
+            <label>🔊 功課完成讚賞音效</label>
+            <button data-val="cantonese" onclick="setReward('cantonese')">粵語讚賞</button>
+            <button data-val="english" onclick="setReward('english')">英文讚賞</button>
+            <button data-val="coin" onclick="setReward('coin')">金幣聲🪙</button>
+            <button data-val="mtr" onclick="setReward('mtr')">地鐵嘟嘟嘟聲</button>
+        </div>
+    </div>
+
+    <div id="teacher-panel" class="modal-panel">
+        <div class="panel-header">
+            <h2>👨‍🏫 教師管理後台 (支援10篇課文預載)</h2>
+            <button class="btn-large" onclick="closePanel('teacher-panel')">關閉</button>
+        </div>
+        <div class="settings-item">
+            <h3>📈 學生功課完成度檢查表</h3>
+            <button onclick="clearProgress()" style="background-color: #ff3333; color: white; padding: 10px; border-radius: 5px;">重設學生進度</button>
+            <table class="teacher-table">
+                <thead>
+                    <tr><th>課文編號與名稱</th><th>狀態</th><th>獲得獎勵貼紙</th></tr>
+                </thead>
+                <tbody id="progress-table-body"></tbody>
+            </table>
+        </div>
+        <div class="settings-item">
+            <h3>📝 編輯學期課文</h3>
+            <button onclick="saveArticlesToStorage()" style="background-color: #28a745; color: white; padding: 10px 20px; border-radius: 5px;">💾 儲存所有文章變更</button>
+            <div id="teacher-articles-edit-zone" style="margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <div id="home-container"></div>
+    <div id="article-container"></div>
+
+    <div class="action-zone">
+    <button id="finish-art-btn" class="btn-large" style="display: none; font-size: 26px; padding: 8px 30px; background-color: #28a745; color: white; border-radius: 50px; width: 100%; max-width: 600px;" onclick="completeCurrentArticle()">
+        點我表示【我讀完整篇文章了】
+    </button>
+    <button id="next-art-btn" class="btn-large" style="display: none; font-size: 26px; padding: 8px 30px; background-color: #007bff; color: white; border-radius: 50px; width: 100%; max-width: 600px; margin-top: 8px;" onclick="goToNextArticle()">
+        前往下一課 ➡️
+    </button>
+    <div id="praise-output" class="praise-animate"></div>
+    </div>
+
+    <div id="zoom-indicator" class="zoom-display-fixed">文字大小: 100%, 40pt, 53px</div>
+
+    <div class="footer">©2026 ES Ho & J.Y. All rights reserved.</div>
+
+<script>
+    const defaultArticles = [
+        "1 星期天，天氣炎熱，我和媽媽在街上感到口渴，卻沒帶水，於是去買飲料。",
+        "2 我們走進一家便利店，看見冷藏櫃裏擺放着各種各樣的飲料，有汽水、果汁等。",
+        "3 媽媽遞給我一張十元紙幣，讓我自己買。哈哈！我可高興了！買東西難不倒我。",
+        "4 課文第四篇：今天和同學一起去中央圖書館，裡面有好多好看的繪本故事。",
+        "5 課文第五篇：小狗在草地上快樂地奔跑，搖尾巴，牠是我們最心愛的寵物。",
+        "6 課文第六篇：老師教導我們，過馬路時要看清交通燈，注意安全，切勿低頭。",
+        "7 課文第七篇：中秋節的月亮特別大、特別圓，我們一邊吃月餅，一邊賞月。",
+        "8 課文第八篇：多吃蔬菜 and 水果，多做運動，身體才會健康，快高長大。",
+        "9 課文第九篇：今天是學校的運動會，拉拉隊落力加油，運動員拼命向前衝。",
+        "10 課文第十篇：原來學習語文這麼有趣，我要學會更多字，做個精明的小學者！"
+    ];
+
+    // 全域變數定義
+    let globalArticles = [];
+    let currentArticleIndex = 0;
+    let currentSpeed = 1.0;
+    let currentRewardType = 'cantonese'; 
+    let currentReadingLang = 'zh-HK'; 
+    let studentProgress = {};
+
+    const themes = ['', 'theme-white-black', 'theme-black-white', 'theme-black-yellow'];
+    let themeIndex = 0;
+
+    const synth = window.speechSynthesis;
+    let audioCtx = null; 
+    let lastTouchedElement = null;
+    let isReadingMode = false;
+    let currentFontSizePt = 40;    let articleReadWordCount = 0;
+    let articleScrolledToBottom = false;
+    // 將主要 DOM 容器移出全域宣告，避免 Scope 重複命名錯誤
+    let mainArticleContainer = null;
+
+    window.onload = function() {
+        // 綁定主要文字容器
+        mainArticleContainer = document.getElementById('article-container');
+
+        setupSplashScreen();
+
+        // 初始化文章快取
+        const localArts = localStorage.getItem('vi_articles');
+        if (localArts) globalArticles = JSON.parse(localArts);
+        else { 
+            globalArticles = defaultArticles; 
+            localStorage.setItem('vi_articles', JSON.stringify(globalArticles));
+        }
+
+        // 初始化學生進度
+        const localProg = localStorage.getItem('vi_progress');
+        if (localProg) studentProgress = JSON.parse(localProg);
+        else resetProgressObject();
+
+        // 依序建立 UI
+        buildArticlePicker();
+        buildTeacherEditor();
+        buildHomeLessons();
+        loadSelectedArticle();
+        
+        // 預設切換至首頁
+        showView('home');
+        renderTeacherProgressTable();
+        setupPinchToZoomSimulated();
+        setupTouchEvents(); // 獨立初始化觸控，確保不卡死
+        setupArticleCompletionGate();
+        
+        updateFontSize(40); 
+        updateSettingVisuals(); 
+    };
+
+    function setupSplashScreen() {
+        const splash = document.getElementById('splash-screen');
+        if (!splash) return;
+
+        const enterMainPage = () => {
+            if (!splash.classList.contains('ready')) return;
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                showView('home');
+            }, 400);
+        };
+
+        setTimeout(() => {
+            splash.classList.add('ready');
+        }, 1200);
+
+        splash.addEventListener('click', enterMainPage, { once: false });
+        splash.addEventListener('touchstart', enterMainPage, { once: false, passive: true });
+        splash.addEventListener('pointerdown', enterMainPage, { once: false });
+    }
+
+    function goHome() {
+        buildHomeLessons();
+        showView('home');
+    }
+
+    function cycleTheme() {
+        themeIndex = (themeIndex + 1) % themes.length;
+        document.body.className = themes[themeIndex];
+    }
+
+    function resetProgressObject() {
+        studentProgress = {};
+        for(let i=0; i<10; i++) studentProgress[i] = false;
+        localStorage.setItem('vi_progress', JSON.stringify(studentProgress));
+    }
+
+    function buildArticlePicker() {
+        const picker = document.getElementById('article-picker');
+        if(!picker) return;
+        picker.innerHTML = '';
+        globalArticles.forEach((art, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.innerText = `課文 ${idx+1}: ${art.substring(0, 8)}...`;
+            picker.appendChild(opt);
+        });
+    }
+
+    function buildHomeLessons() {
+        const homeContainer = document.getElementById('home-container');
+        if(!homeContainer) return;
+        homeContainer.innerHTML = '';
+
+        const title = document.createElement('div');
+        title.className = 'home-title';
+        title.innerText = '請選擇課次開始學習';
+        homeContainer.appendChild(title);
+
+        const grid = document.createElement('div');
+        grid.className = 'lesson-grid';
+
+        globalArticles.forEach((art, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'lesson-btn';
+
+            const mainText = document.createElement('div');
+            mainText.innerText = `第 ${idx + 1} 課`;
+
+            const subText = document.createElement('div');
+            subText.className = 'btn-subtext';
+            subText.innerText = art.substring(0, 12) + '...';
+
+            btn.appendChild(mainText);
+            btn.appendChild(subText);
+
+            btn.onclick = function() {
+                const picker = document.getElementById('article-picker');
+                if(picker) picker.value = idx;
+                loadSelectedArticle();
+            };
+            grid.appendChild(btn);
+        });
+        homeContainer.appendChild(grid);
+    }
+
+    function showView(viewName) {
+        const homeDiv = document.getElementById('home-container');
+        const artDiv = document.getElementById('article-container');
+        const actionZone = document.querySelector('.action-zone');
+
+        if (viewName === 'home') {
+            if(homeDiv) homeDiv.style.display = 'flex';
+            if(artDiv) artDiv.style.display = 'none';
+            if(actionZone) actionZone.style.display = 'none';
+        } else {
+            if(homeDiv) homeDiv.style.display = 'none';
+            if(artDiv) artDiv.style.display = 'block';
+            if(actionZone) actionZone.style.display = 'flex';
+        }
+    }
+
+    function loadSelectedArticle() {
+        const picker = document.getElementById('article-picker');
+        // 防禦性修正：若 picker 還沒載入完成，預設讀取第 0 課，防範 NaN 崩潰
+        if(picker && picker.value !== "") {
+            currentArticleIndex = parseInt(picker.value) || 0;
+        } else {
+            currentArticleIndex = 0;
+        }
+
+        const text = globalArticles[currentArticleIndex] || "";
+        
+        if (!mainArticleContainer) mainArticleContainer = document.getElementById('article-container');
+        if (!mainArticleContainer) return;
+        mainArticleContainer.innerHTML = '';
+
+        articleReadWordCount = 0;
+        articleScrolledToBottom = false;
+        updateFinishButtonVisibility();
+
+        const pDiv = document.createElement('div');
+        pDiv.className = 'paragraph';
+
+        for (let char of text) {
+            const span = document.createElement('span');
+            span.textContent = char;
+            
+            if (char.trim() !== '') {
+                span.className = 'word';
+                span.tabIndex = 0;
+                
+                const triggerAction = (source = 'hover') => {
+                    highlightWord(span);
+                    speakText(char);
+                    if (source !== 'hover') {
+                        registerWordRead();
+                    }
+                };
+                span.onmouseenter = () => triggerAction('hover');
+                span.onfocus = () => triggerAction('hover');
+                span.onclick = (e) => {
+                    e.preventDefault();
+                    triggerAction('click');
+                };
+                span.onkeydown = (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        triggerAction('keyboard');
+                    }
+                };
+            } else {
+                span.style.width = "20px";
+            }
+            pDiv.appendChild(span);
+        }
+        mainArticleContainer.appendChild(pDiv);
+        document.getElementById('praise-output').innerText = '';
+        document.getElementById('next-art-btn').style.display = 'none';
+
+        showView('lesson');
+    }
+
+    function updateSettingVisuals() {
+        document.querySelectorAll('#setting-group-lang button').forEach(btn => {
+            btn.classList.toggle('active-setting', btn.getAttribute('data-val') === currentReadingLang);
+        });
+        document.querySelectorAll('#setting-group-speed button').forEach(btn => {
+            btn.classList.toggle('active-setting', parseFloat(btn.getAttribute('data-val')) === currentSpeed);
+        });
+        document.querySelectorAll('#setting-group-reward button').forEach(btn => {
+            btn.classList.toggle('active-setting', btn.getAttribute('data-val') === currentRewardType);
+        });
+    }
+
+    function setLanguage(lang) {
+        currentReadingLang = lang;
+        updateSettingVisuals(); 
+        if(synth) {
+            synth.cancel();
+            const msg = lang === 'zh-HK' ? '已切換為粵語' : '已切换为普通话';
+            const utter = new SpeechSynthesisUtterance(msg);
+            utter.lang = lang;
+            synth.speak(utter);
+        }
+    }
+
+    function speakText(text) {
+        if(!synth) return;
+        synth.cancel(); 
+        const utter = new SpeechSynthesisUtterance(text);
+        if(/[a-zA-Z]/.test(text)) utter.lang = 'en-US';
+        else utter.lang = currentReadingLang; 
+        utter.rate = currentSpeed;
+        synth.speak(utter);
+    }
+
+    function highlightWord(el) {
+        document.querySelectorAll('.word').forEach(w => w.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function setupTouchEvents() {
+        if(!mainArticleContainer) return;
+
+        mainArticleContainer.addEventListener('touchstart', function(e) {
+            initAudioContext(); 
+            if (e.touches.length > 1) return; 
+
+            const touch = e.touches[0];
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (el && el.classList.contains('word')) {
+                isReadingMode = true; lastTouchedElement = el;
+                highlightWord(el); speakText(el.textContent);
+                registerWordRead();
+            }
+        }, { passive: false });
+
+        mainArticleContainer.addEventListener('touchmove', function(e) {
+            if (e.touches.length > 1 || !isReadingMode) return;
+            e.preventDefault(); 
+
+            const touch = e.touches[0];
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (el && el.classList.contains('word') && el !== lastTouchedElement) {
+                lastTouchedElement = el; highlightWord(el); speakText(el.textContent);
+                registerWordRead();
+            }
+        }, { passive: false });
+
+        mainArticleContainer.addEventListener('touchend', function() { isReadingMode = false; lastTouchedElement = null; });
+    }
+
+    function setupPinchToZoomSimulated() {
+        let startDist = 0; let startFontSizePt = 40;
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 2) {
+                startDist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                startFontSizePt = currentFontSizePt;
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 2 && startDist > 0) {
+                const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                const delta = (dist - startDist) * 0.3; 
+                let newSizePt = Math.min(Math.max(startFontSizePt + delta, 20), 160);
+                updateFontSize(Math.round(newSizePt));
+            }
+        }, { passive: true });
+    }
+
+    function registerWordRead() {
+        if (articleReadWordCount >= 2) return;
+        articleReadWordCount += 1;
+        updateFinishButtonVisibility();
+    }
+
+    function updateFinishButtonVisibility() {
+        const finishBtn = document.getElementById('finish-art-btn');
+        if (!finishBtn) return;
+        const unlocked = articleReadWordCount >= 2 || articleScrolledToBottom;
+        finishBtn.style.display = unlocked ? 'block' : 'none';
+    }
+
+    function setupArticleCompletionGate() {
+        if (!mainArticleContainer) return;
+        mainArticleContainer.addEventListener('scroll', () => {
+            if (mainArticleContainer.scrollHeight - mainArticleContainer.scrollTop - mainArticleContainer.clientHeight <= 2) {
+                articleScrolledToBottom = true;
+                updateFinishButtonVisibility();
+            }
+        }, { passive: true });
+    }
+
+    function updateFontSize(valPt) {
+        currentFontSizePt = valPt;
+        let valPx = Math.round(valPt * (96 / 72)); 
+        document.documentElement.style.setProperty('--font-size', valPx + 'px');
+        
+        const percent = Math.round((valPt / 40) * 100);
+        const indicator = document.getElementById('zoom-indicator');
+        if (indicator) {
+            indicator.innerText = `文字大小: ${percent}%, ${valPt}pt, ${valPx}px`;
+        }
+    }
+
+    function adjustFontSize(offsetPt) {
+        let newValPt = currentFontSizePt + offsetPt;
+        newValPt = Math.min(Math.max(newValPt, 20), 160); 
+        updateFontSize(newValPt);
+    }
+
+    function setSpeed(speed) { 
+        currentSpeed = speed; 
+        updateSettingVisuals(); 
+    }
+    
+    function setReward(type) { 
+        currentRewardType = type; 
+        updateSettingVisuals(); 
+        playAudioReward(true); 
+    }
+
+    function initAudioContext() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+    function playAudioReward(isPreview = false) {
+        initAudioContext();
+        if (currentRewardType === 'cantonese') {
+            const praises = ["你好叻呀！做得好！", "太厲害了！100分！", "真棒！全部讀對了！"];
+            const txt = praises[Math.floor(Math.random() * praises.length)];
+            if(!isPreview) document.getElementById('praise-output').innerText = txt + " 🌟";
+            speakRewardPhrase(txt, 'zh-HK');
+        } else if (currentRewardType === 'english') {
+            const praises = ["Awesome! Good Job!", "Excellent!", "Perfect Reading!"];
+            const txt = praises[Math.floor(Math.random() * praises.length)];
+            if(!isPreview) document.getElementById('praise-output').innerText = txt + " 🏆";
+            speakRewardPhrase(txt, 'en-US');
+        } else if (currentRewardType === 'mtr') {
+            if(!isPreview) document.getElementById('praise-output').innerText = "🚇 獲得：地鐵嘟嘟嘟專屬貼紙！";
+            playMtrSound();
+        } else if (currentRewardType === 'coin') {
+            if(!isPreview) document.getElementById('praise-output').innerText = "🪙 獲得：閃亮金幣！";
+            playCoinSound();
+        }
+    }
+
+    function speakRewardPhrase(phrase, lang) {
+        if(!synth) return;
+        synth.cancel();
+        const utter = new SpeechSynthesisUtterance(phrase);
+        utter.lang = lang; utter.rate = 1.0; synth.speak(utter);
+    }
+
+    function playMtrSound() {
+        let now = audioCtx.currentTime;
+        for (let i = 0; i < 5; i++) {
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'square'; osc.frequency.setValueAtTime(1150, now + (i * 0.25)); 
+            gain.gain.setValueAtTime(0.2, now + (i * 0.25));
+            gain.gain.exponentialRampToValueAtTime(0.01, now + (i * 0.25) + 0.18);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(now + (i * 0.25)); osc.stop(now + (i * 0.25) + 0.2);
+        }
+    }
+
+   function playCoinSound() {
+        initAudioContext();
+        if (!audioCtx) return;
+
+        const now = audioCtx.currentTime;
+
+        // 第一個音節: 較低頻率（約 B5），極短促
+        const osc1 = audioCtx.createOscillator();
+        const gain1 = audioCtx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(987.77, now);
+        gain1.gain.setValueAtTime(0.12, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+        osc1.connect(gain1);
+        gain1.connect(audioCtx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.08);
+
+        // 第二個音節: 較高頻率（約 E6），緊接在後並帶有微弱尾音
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1318.51, now + 0.07);
+        gain2.gain.setValueAtTime(0.12, now + 0.07);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        osc2.connect(gain2);
+        gain2.connect(audioCtx.destination);
+        osc2.start(now + 0.07);
+        osc2.stop(now + 0.38);
+        }
+
+    function completeCurrentArticle() {
+        studentProgress[currentArticleIndex] = true;
+        localStorage.setItem('vi_progress', JSON.stringify(studentProgress));
+        playAudioReward(false);
+        renderTeacherProgressTable();
+        document.getElementById('next-art-btn').style.display = 'block';
+    }
+
+    function goToNextArticle() {
+        let nextIdx = (currentArticleIndex + 1) % globalArticles.length;
+        const picker = document.getElementById('article-picker');
+        if(picker) picker.value = nextIdx;
+        loadSelectedArticle();
+    }
+
+    window.openPanel = function(id) {
+        document.getElementById(id).style.display = 'block';
+        if(id === 'teacher-panel') renderTeacherProgressTable();
+    };
+    window.closePanel = function(id) { document.getElementById(id).style.display = 'none'; };
+
+    function renderTeacherProgressTable() {
+        const tbody = document.getElementById('progress-table-body');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        const stickers = ["🎫 地鐵車票貼紙", "🪙 閃亮金幣", "🌟 金色大星星", "🏆 卓越獎盃"];
+        globalArticles.forEach((art, idx) => {
+            const tr = document.createElement('tr');
+            const tdName = document.createElement('td'); tdName.innerText = `第 ${idx+1} 篇: ${art.substring(0,8)}...`;
+            const tdStatus = document.createElement('td');
+            if(studentProgress[idx]) tdStatus.innerHTML = "<b style='color:green;'>✅ 已完成閱讀</b>";
+            else tdStatus.innerHTML = "<span style='color:red;'>❌ 未完成</span>";
+            
+            const tdSticker = document.createElement('td');
+            tdSticker.innerText = studentProgress[idx] ? stickers[idx % stickers.length] : "---";
+            tr.appendChild(tdName); tr.appendChild(tdStatus); tr.appendChild(tdSticker); tbody.appendChild(tr);
+        });
+    }
+
+    function buildTeacherEditor() {
+        const zone = document.getElementById('teacher-articles-edit-zone');
+        if(!zone) return;
+        zone.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const wrapper = document.createElement('div');
+            wrapper.style.marginBottom = "15px";
+            const label = document.createElement('label'); label.style.fontSize = "18px"; label.innerText = `課文 [第 ${i+1} 篇] 文字內容：`;
+            const textarea = document.createElement('textarea'); textarea.className = 'textarea-article';
+            textarea.id = `edit-art-${i}`; textarea.value = globalArticles[i] || ""; 
+            wrapper.appendChild(label); wrapper.appendChild(textarea); zone.appendChild(wrapper);
+        }
+    }
+
+    function saveArticlesToStorage() {
+        const newArticles = [];
+        for (let i = 0; i < 10; i++) {
+            const ta = document.getElementById(`edit-art-${i}`);
+            newArticles.push(ta ? ta.value : "");
+        }
+        globalArticles = newArticles; localStorage.setItem('vi_articles', JSON.stringify(globalArticles));
+        buildArticlePicker(); 
+        buildHomeLessons();
+        loadSelectedArticle(); 
+        alert("💾 10篇學期課文已成功儲存入系統中！");
+    }
+
+    function clearProgress() {
+        if(confirm("確定要清除學生的所有功課完成記錄與貼紙嗎？")) {
+            resetProgressObject();
+            renderTeacherProgressTable(); loadSelectedArticle();
+        }
+    }
+</script>
+</body>
+</html>
